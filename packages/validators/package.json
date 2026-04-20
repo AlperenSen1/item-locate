@@ -1,0 +1,8 @@
+{
+  "name": "@item-locate/validators",
+  "version": "1.0.0",
+  "main": "./src/index.ts",
+  "dependencies": {
+    "zod": "latest"
+  }
+}
