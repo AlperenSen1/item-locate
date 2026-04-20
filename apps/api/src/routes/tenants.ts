@@ -10,7 +10,7 @@ import { type AppVariables, jwtMiddleware } from "../index";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-
+//returns all tenants that the user is a member or admin of
 app.get("/tenants", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload"); //retuns unknown, thats why i used AppVariables
@@ -22,6 +22,6 @@ app.get("/tenants", jwtMiddleware, async (c) => {
     .where(eq(tenantsUsers.userId, payload.userId));
 
   return c.json(userTenants);
-})
+});
 
 export default app;

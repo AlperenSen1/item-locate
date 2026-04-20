@@ -92,14 +92,6 @@ export const containersItems = pgTable("containers_items", {
   changedAt: timestamp("changed_at").defaultNow().notNull(),
 });
 
-export const verificationTokens = pgTable("verification_tokens", {
-  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
-  token: varchar("token", { length: 255 }).notNull(),
-  identifier: varchar("identifier", { length: 255 }).notNull(), //email
-  expiresAt: timestamp("expires_at").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  isUsed: boolean("is_used").default(false).notNull(),
-});
 
 // --- AUTOMATION TABLES ---
 

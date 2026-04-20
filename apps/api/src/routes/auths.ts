@@ -110,5 +110,26 @@ app.post("/auth/token/refresh", zValidator("json", z.object({ tenantId: z.uuid()
   return c.json({ token });
 });
 
+app.get("/auth/me", jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      tenantName: tenants.name,
+      role: tenantsUsers.role,
+    })
+    .from(tenantsUsers)
+    .innerJoin(tenants, eq(tenantsUsers.tenantId, tenants.id))
+    .innerJoin(users, eq(users.id, tenantsUsers.userId)) // join iki sütün arasında olmalı, payload.userId yazma. Where de yazabilirsin
+    .where(and(eq(tenantsUsers.tenantId, payload.tenantId), eq(tenantsUsers.userId, payload.userId)));
+  if (!user) throw new HTTPException(404, { message: "User not found" });
 
-export default app;
+  return c.json({ user });
+})
+
+
+  export default app;
