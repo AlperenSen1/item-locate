@@ -92,23 +92,29 @@ app.post("/auth/login", zValidator("json", loginSchema), async (c) => {
   return c.json({ userTenants });
 });
 
-
+//                                                            zod varsayılan olarak null kabul etmiyor zaten, kullanıcının req body'de tenantId göndermeme ihtimali yok.
 app.post("/auth/token/refresh", zValidator("json", z.object({ tenantId: z.uuid() })), jwtMiddleware, async (c) => {
 
   const { tenantId } = c.req.valid("json");
-
   const payload = c.get("jwtPayload");
+
+  const [membership] = await db
+    .select()
+    .from(tenantsUsers)
+    .where(and(eq(tenantsUsers.tenantId, tenantId), eq(tenantsUsers.userId, payload.userId)));
+  if (!membership) throw new HTTPException(403, { message: "Access Denied" });
 
   const token = await sign({
     userId: payload.userId,
     tenantId,
-    role: payload.role,
+    role: membership.role,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24
   },
     process.env.JWT_SECRET!
   );
   return c.json({ token });
 });
+
 
 app.get("/auth/me", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
