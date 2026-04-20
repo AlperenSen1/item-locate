@@ -11,3 +11,11 @@ export const loginSchema = z.object({
 export const registerSchema = loginSchema.extend({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
 });
+
+export const tenantSchema = z.object({
+  id: z.uuid(),
+})
+
+export const membersTenantsSchema = tenantSchema.extend({
+  email: z.email().optional(),
+})
