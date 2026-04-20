@@ -15,7 +15,3 @@ export const registerSchema = loginSchema.extend({
 export const tenantSchema = z.object({
   id: z.uuid(),
 })
-
-export const membersTenantsSchema = tenantSchema.extend({
-  email: z.email().optional(),
-})
