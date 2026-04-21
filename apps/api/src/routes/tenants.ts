@@ -4,7 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import { sign, verify, jwt } from "hono/jwt";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "@item-locate/db";
-import { tenantSchema } from "@item-locate/validators";
+import { idParamSchema } from "@item-locate/validators";
 import { users, tenants, tenantsUsers } from "@item-locate/db";
 import { type AppVariables, jwtMiddleware } from "../index";
 import z from "zod";
@@ -26,10 +26,10 @@ app.get("/tenants", jwtMiddleware, async (c) => {
   return c.json(userTenants);
 });
 
-app.get("/tenants/:id", zValidator("param", tenantSchema), jwtMiddleware, async (c) => {
+app.get("/tenants/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
-  const tenantId = c.req.param("id");
+  const { id: tenantId } = c.req.valid("param");
 
   const [member] = await db
     .select()

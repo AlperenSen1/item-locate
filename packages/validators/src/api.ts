@@ -12,6 +12,6 @@ export const registerSchema = loginSchema.extend({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
 });
 
-export const tenantSchema = z.object({
+export const idParamSchema = z.object({
   id: z.uuid(),
 })
