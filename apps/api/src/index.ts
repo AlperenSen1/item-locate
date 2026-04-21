@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { jwt } from "hono/jwt";
 import { HTTPException } from "hono/http-exception";
 import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
-import authsApp from "./routes/auths.ts";
+import authsApp from "./routes/auth.ts";
 
 
 export type AppVariables = {
