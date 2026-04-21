@@ -37,6 +37,31 @@ app.get("/containers/:id", zValidator("param", idParamSchema), jwtMiddleware, as
   return c.json(container);
 })
 
+app.get("/containers/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+  const { id: containerId } = c.req.valid("param");
+
+  const [container] = await db
+    .select()
+    .from(containers)
+    .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
+  if (!container) throw new HTTPException(403, { message: "Access denied" });
+
+  const itemList = await db
+    .select({
+      id: items.id,
+      name: items.name,
+      isPinned: items.isPinned,
+      status: items.status,
+
+    })
+    .from(containersItems)
+    .innerJoin(items, eq(containersItems.itemId, items.id))
+    .where(eq(containersItems.containerId, containerId));
+
+  return c.json(itemList);
+})
+
 app.get("/containers/:id/items/:itemId", zValidator("param", z.object({ id: z.uuid(), itemId: z.uuid() })), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: containerId } = c.req.valid("param");
