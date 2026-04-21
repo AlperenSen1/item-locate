@@ -26,28 +26,107 @@ app.get("/tenants", jwtMiddleware, async (c) => {
   return c.json(userTenants);
 });
 
+// returns the tenant info by id, if the user is a member or admin of that tenant
 app.get("/tenants/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
-
   const payload = c.get("jwtPayload");
   const { id: tenantId } = c.req.valid("param");
 
+  // kullanıcının bu tenant'a üyeliği var mı?
+  const [membership] = await db
+    .select()
+    .from(tenantsUsers)
+    .where(and(
+      eq(tenantsUsers.userId, payload.userId),
+      eq(tenantsUsers.tenantId, tenantId)
+    ));
+
+  if (!membership) throw new HTTPException(403, { message: "Access denied" });
+
+  // erişim serbest, tenant bilgilerini getir
   const [tenant] = await db
     .select({
       name: tenants.name,
       createdAt: tenants.createdAt,
       memberCount: db
-        .select({ count: count()})
+        .select({ count: count() })
         .from(tenantsUsers)
-        .where(eq(tenantsUsers.tenantId, tenants.id)) // SEBEBİ ANLAŞILMADI, innerJoin gibi sütunlardan bağlamıyoruz ki neden tenantId kullanamayalım?
-        .as("memberCount"), // SEBEBİ ANLAŞILMADI, zaten iç sorgu çıktısı dış sorgunun selectine memberCount adıyla gidiyor.
+        .where(eq(tenantsUsers.tenantId, tenants.id))
+        .as("memberCount"),
     })
-    .from(tenantsUsers)
-    .innerJoin(tenants, eq(tenants.id, tenantsUsers.tenantId))
-    .where(and(eq(tenantsUsers.tenantId, tenantId), eq(tenantsUsers.userId, payload.userId)));
-  if (!tenant) throw new HTTPException(403, { message: "Access denied" });
+    .from(tenants)
+    .where(eq(tenants.id, tenantId));
 
   return c.json(tenant);
 });
+
+app.get("/tenants/:id/users", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+  const { id: tenantId } = c.req.valid("param");
+
+  // kullanıcının bu tenant'a üyeliği var mı?
+  const [membership] = await db
+    .select()
+    .from(tenantsUsers)
+    .where(and(
+      eq(tenantsUsers.userId, payload.userId),
+      eq(tenantsUsers.tenantId, tenantId)
+    ));
+
+  if (!membership) throw new HTTPException(403, { message: "Access denied" });
+
+  // erişim serbest, tenant'ın kullanıcılarını getir
+  const members = await db
+    .select()
+    .from(tenantsUsers)
+    .where(eq(tenantsUsers.tenantId, tenantId));
+
+  return c.json(members);
+});
+
+app.get("/tenants/:id/users/:userId",
+  zValidator("param", z.object({ id: z.uuid(), userId: z.uuid() })),
+  jwtMiddleware,
+  async (c) => {
+    const payload = c.get("jwtPayload");
+    const { id: tenantId, userId } = c.req.valid("param");
+
+    // kullanıcının bu tenant'a üyeliği var mı?
+    const [membership] = await db
+      .select()
+      .from(tenantsUsers)
+      .where(and(
+        eq(tenantsUsers.userId, payload.userId),
+        eq(tenantsUsers.tenantId, tenantId)
+      ));
+
+    if (!membership) throw new HTTPException(403, { message: "Access denied" });
+
+    // erişim serbest, istenen kullanıcının bilgilerini getir
+    const [user] = await db
+      .select({
+        userId: tenantsUsers.userId,
+        role: tenantsUsers.role,
+        membershipCreatedAt: tenantsUsers.createdAt,
+        membershipUpdatedAt: tenantsUsers.updatedAt,
+        userName: users.name,
+        userEmail: users.email,
+        userCreatedAt: users.createdAt,
+        userUpdatedAt: users.updatedAt,
+      })
+      .from(tenantsUsers)
+      .innerJoin(users, eq(tenantsUsers.userId, users.id))
+      .where(and(
+        eq(tenantsUsers.userId, userId),
+        eq(tenantsUsers.tenantId, tenantId)
+      ));
+
+    if (!user) throw new HTTPException(404, { message: "User not found" });
+
+    return c.json(user);
+  }
+);
+
+
 
 
 export default app;

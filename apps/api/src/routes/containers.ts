@@ -26,12 +26,12 @@ app.get("/containers", jwtMiddleware, async (c) => {
 app.get("/containers/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
-  const { id } =c.req.valid("param")
+  const { id: containerId } =c.req.valid("param")
 
   const [container] = await db
     .select()
     .from(containers)
-    .where(and(eq(containers.id, id), eq(containers.tenantId, payload.tenantId)));
+    .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
   if (!container) throw new HTTPException(403, { message: "Access denied" });
 
   return c.json(container);
