@@ -1,4 +1,5 @@
-import { z } from "zod";
+import { describe, z } from "zod";
+import { itemStatusEnum, roleEnum } from "@item-locate/validators";
 
 export const loginSchema = z.object({
   email: z.email({ message: "Invalid email address" }),
@@ -15,3 +16,26 @@ export const registerSchema = loginSchema.extend({
 export const idParamSchema = z.object({
   id: z.uuid(),
 })
+
+export const postContainerSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  description: z.string().optional(),
+  location: z.string().optional(),
+  className: z.string().optional(),
+  isHidden: z.boolean().optional(),
+});
+
+export const postItemSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  category: z.string().optional(),
+  location: z.string().optional(),
+  className: z.string().optional(),
+  isPinned: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
+  status: itemStatusEnum.optional(),
+});
+
+export const containerItemSchema = z.object({
+  id: z.uuid(),
+  itemId: z.uuid(),
+});

@@ -4,7 +4,7 @@ import { jwtMiddleware } from "../index.ts";
 import { db, tenants } from "@item-locate/db";
 import { containers, items, containersItems  } from "@item-locate/db";
 import { eq, and } from "drizzle-orm";
-import { idParamSchema } from "@item-locate/validators";
+import { idParamSchema, postContainerSchema, containerItemSchema } from "@item-locate/validators";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -87,5 +87,51 @@ app.get("/containers/:id/items/:itemId", zValidator("param", z.object({ id: z.uu
 
   return c.json(item);
 })
+
+// !!!!!!!!auth-register da kendimiz insertion için hata mesajı oluşturmuşken burada neden oluşturmadık ANLAMADIM
+app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, async (c) => {
+
+  const payload = c.get("jwtPayload");
+  const { name, description, location, className, isHidden } = c.req.valid("json");
+
+  const [container] = await db
+    .insert(containers)
+    .values({ name, description, location, className, isHidden, tenantId: payload.tenantId })
+    .returning();
+
+  return c.json(container, 201); //burada oluşturduğumuz container bilgilerini dönmek mi mantıklı yoksa successfully created 201 yeter mi
+
+})
+
+app.post("/containers/:id/items/:itemId", zValidator("param", containerItemSchema), jwtMiddleware, async (c) => {
+
+    const payload = c.get("jwtPayload");
+    const { id: containerId, itemId } = c.req.valid("param");
+
+    const [container] = await db
+      .select()
+      .from(containers)
+      .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
+    if (!container) throw new HTTPException(403, { message: "Access denied" });
+
+    const [item] = await db
+      .select()
+      .from(items)
+      .where(and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId)));
+    if (!item) throw new HTTPException(403, { message: "Access denied" });
+
+    const [containersItem] = await db
+      .insert(containersItems)
+      .values({
+        containerId,
+        itemId,
+        userId: payload.userId,
+        status: item.status
+      })
+      .returning();
+
+    return c.json(containersItem, 201);
+  }
+)
 
 export default app;
