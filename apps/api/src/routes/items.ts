@@ -14,7 +14,13 @@ app.get("/items", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
   const userItems = await db
-    .select()
+    .select({
+      id: items.id,
+      name: items.name,
+      isPinned: items.isPinned,
+      isHidden: items.isHidden,
+      status: items.status,
+    })
     .from(items)
     .where(eq(items.tenantId, payload.tenantId));
 

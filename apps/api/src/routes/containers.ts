@@ -16,7 +16,11 @@ app.get("/containers", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
 
   const containerList = await db
-    .select()
+    .select({
+      id: containers.id,
+      name: containers.name,
+      isHidden: containers.isHidden,
+    })
     .from(containers)
     .where(eq(containers.tenantId, payload.tenantId))
 
@@ -75,18 +79,7 @@ app.get("/containers/:id/items/:itemId", zValidator("param", z.object({ id: z.uu
   const { itemId } = c.req.valid("param");
 
   const [item] = await db
-    .select({
-      tenantId: items.tenantId,
-      category: items.category,
-      name: items.name,
-      location: items.location,
-      className: items.className,
-      isPinned: items.isPinned,
-      isHidden: items.isHidden,
-      status: items.status,
-      createdAt: items.createdAt,
-      updatedAt: items.updatedAt,
-    })
+    .select()
     .from(containersItems)
     .innerJoin(items, eq(items.id, containersItems.itemId))
     .where(and(eq(containersItems.containerId, containerId), eq(containersItems.itemId, itemId)));

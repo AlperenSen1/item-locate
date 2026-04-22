@@ -8,6 +8,7 @@ import { idParamSchema } from "@item-locate/validators";
 import { users, tenants, tenantsUsers } from "@item-locate/db";
 import { type AppVariables, jwtMiddleware } from "../index";
 import z from "zod";
+import { id } from "zod/v4/locales";
 
 
 const app = new Hono<{ Variables: AppVariables }>();
@@ -17,13 +18,16 @@ app.get("/tenants", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload"); //retuns unknown, thats why i used AppVariables
 
-  const userTenants = await db
-    .select()
+  const tenantList = await db
+    .select({
+      id: tenants.id,
+      name: tenants.name,
+    })
     .from(tenantsUsers)
     .innerJoin(tenants, eq(tenantsUsers.tenantId, tenants.id))
     .where(eq(tenantsUsers.userId, payload.userId));
 
-  return c.json(userTenants);
+  return c.json(tenantList);
 });
 
 // returns the tenant info by id, if the user is a member or admin of that tenant
@@ -45,6 +49,7 @@ app.get("/tenants/:id", zValidator("param", idParamSchema), jwtMiddleware, async
   // erişim serbest, tenant bilgilerini getir
   const [tenant] = await db
     .select({
+      id: tenants.id,
       name: tenants.name,
       createdAt: tenants.createdAt,
       memberCount: db
@@ -76,21 +81,24 @@ app.get("/tenants/:id/users", zValidator("param", idParamSchema), jwtMiddleware,
 
   // erişim serbest, tenant'ın kullanıcılarını getir
   const members = await db
-    .select()
+    .select({
+      id: users.id,
+      name: users.name,
+      role: tenantsUsers.role
+    })
     .from(tenantsUsers)
+    .innerJoin(users, eq(tenantsUsers.userId, users.id))
     .where(eq(tenantsUsers.tenantId, tenantId));
 
   return c.json(members);
 });
 
-app.get("/tenants/:id/users/:userId",
-  zValidator("param", z.object({ id: z.uuid(), userId: z.uuid() })),
-  jwtMiddleware,
-  async (c) => {
+app.get("/tenants/:id/users/:userId", zValidator("param", z.object({ id: z.uuid(), userId: z.uuid() })), jwtMiddleware, async (c) => {
+
     const payload = c.get("jwtPayload");
     const { id: tenantId, userId } = c.req.valid("param");
 
-    // kullanıcının bu tenant'a üyeliği var mı?
+    // kullanıcının bu tenant'a üyeliği var mı ve admin mi?
     const [membership] = await db
       .select()
       .from(tenantsUsers)
@@ -99,19 +107,19 @@ app.get("/tenants/:id/users/:userId",
         eq(tenantsUsers.tenantId, tenantId)
       ));
 
-    if (!membership) throw new HTTPException(403, { message: "Access denied" });
+    if (!membership || membership.role !== "admin") throw new HTTPException(403, { message: "Access denied" });
 
     // erişim serbest, istenen kullanıcının bilgilerini getir
     const [user] = await db
       .select({
-        userId: tenantsUsers.userId,
+        id: users.id,
         role: tenantsUsers.role,
         membershipCreatedAt: tenantsUsers.createdAt,
         membershipUpdatedAt: tenantsUsers.updatedAt,
-        userName: users.name,
-        userEmail: users.email,
-        userCreatedAt: users.createdAt,
-        userUpdatedAt: users.updatedAt,
+        name: users.name,
+        email: users.email,
+        CreatedAt: users.createdAt,
+        UpdatedAt: users.updatedAt,
       })
       .from(tenantsUsers)
       .innerJoin(users, eq(tenantsUsers.userId, users.id))
