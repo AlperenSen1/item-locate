@@ -4,11 +4,12 @@ import { HTTPException } from "hono/http-exception";
 import { sign, verify, jwt } from "hono/jwt";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "@item-locate/db";
-import { idParamSchema } from "@item-locate/validators";
+import { idParamSchema, postTenantsUsersSchema, roleEnum } from "@item-locate/validators";
 import { users, tenants, tenantsUsers, containers } from "@item-locate/db";
 import { type AppVariables, jwtMiddleware } from "../index";
 import z from "zod";
 import { id } from "zod/v4/locales";
+
 
 
 const app = new Hono<{ Variables: AppVariables }>();
@@ -33,22 +34,10 @@ app.get("/tenants", jwtMiddleware, async (c) => {
 
 
 
-app.get("/tenants/:id/users", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/tenants/users", jwtMiddleware, async (c) => {
+
   const payload = c.get("jwtPayload");
-  const { id: tenantId } = c.req.valid("param");
 
-  // kullanıcının bu tenant'a üyeliği var mı?
-  const [membership] = await db
-    .select()
-    .from(tenantsUsers)
-    .where(and(
-      eq(tenantsUsers.userId, payload.userId),
-      eq(tenantsUsers.tenantId, tenantId)
-    ));
-
-  if (!membership) throw new HTTPException(403, { message: "Access denied" });
-
-  // erişim serbest, tenant'ın kullanıcılarını getir
   const members = await db
     .select({
       id: users.id,
@@ -57,45 +46,43 @@ app.get("/tenants/:id/users", zValidator("param", idParamSchema), jwtMiddleware,
     })
     .from(tenantsUsers)
     .innerJoin(users, eq(tenantsUsers.userId, users.id))
-    .where(eq(tenantsUsers.tenantId, tenantId));
+    .where(eq(tenantsUsers.tenantId, payload.tenantId));
 
   return c.json(members);
 });
 
-app.get("/tenants/:id/users/:userId", zValidator("param", z.object({ id: z.uuid(), userId: z.uuid() })), jwtMiddleware, async (c) => {
+app.get("/tenants/users/:userId", zValidator("param", z.object({ userId: z.uuid() })), jwtMiddleware, async (c) => {
 
-    const payload = c.get("jwtPayload");
-    const { id: tenantId, userId } = c.req.valid("param");
+  const payload = c.get("jwtPayload");
+  const { userId } = c.req.valid("param");
 
-    // kullanıcının bu tenant'a üyeliği var mı ve admin mi?
-    const [membership] = await db
-      .select()
-      .from(tenantsUsers)
-      .where(and(
-        eq(tenantsUsers.userId, payload.userId),
-        eq(tenantsUsers.tenantId, tenantId)
-      ));
+  const [isAdmin] = await db
+    .select()
+    .from(tenantsUsers)
+    .where(and(
+      eq(tenantsUsers.userId, payload.userId),
+      eq(tenantsUsers.tenantId, payload.tenantId),
+      eq(tenantsUsers.role, "admin")
+    ));
+  if (!isAdmin) throw new HTTPException(403, { message: "Access denied" });
 
-    if (!membership || membership.role !== "admin") throw new HTTPException(403, { message: "Access denied" });
-
-    // erişim serbest, istenen kullanıcının bilgilerini getir
-    const [user] = await db
-      .select({
-        id: users.id,
-        role: tenantsUsers.role,
-        membershipCreatedAt: tenantsUsers.createdAt,
-        membershipUpdatedAt: tenantsUsers.updatedAt,
-        name: users.name,
-        email: users.email,
-        CreatedAt: users.createdAt,
-        UpdatedAt: users.updatedAt,
-      })
-      .from(tenantsUsers)
-      .innerJoin(users, eq(tenantsUsers.userId, users.id))
-      .where(and(
-        eq(tenantsUsers.userId, userId),
-        eq(tenantsUsers.tenantId, tenantId)
-      ));
+  const [user] = await db
+    .select({
+      id: users.id,
+      role: tenantsUsers.role,
+      membershipCreatedAt: tenantsUsers.createdAt,
+      membershipUpdatedAt: tenantsUsers.updatedAt,
+      name: users.name,
+      email: users.email,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+    })
+    .from(tenantsUsers)
+    .innerJoin(users, eq(tenantsUsers.userId, users.id))
+    .where(and(
+      eq(tenantsUsers.userId, userId),
+      eq(tenantsUsers.tenantId, payload.tenantId)
+    ));
 
     if (!user) throw new HTTPException(404, { message: "User not found" });
 
@@ -104,49 +91,54 @@ app.get("/tenants/:id/users/:userId", zValidator("param", z.object({ id: z.uuid(
 );
 
 app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { message: "Name is required" }) })), jwtMiddleware, async (c) => {
+
   const payload = c.get("jwtPayload");
   const { name } = c.req.valid("json");
 
-  // kullanıcının adını çek
-  const [user] = await db
-    .select({ name: users.name })
-    .from(users)
-    .where(eq(users.id, payload.userId));
-
   const tenant = await db.transaction(async (tx) => {
-    //yeni tenant'ı oluştur
+
     const [newTenant] = await tx
       .insert(tenants)
       .values({
-        name: name,
+        name
       })
       .returning();
     if (!newTenant) throw new Error("Tenant insertion failed");
 
-    // oluşturan kullanıcıyı admin olarak bu tenant'a üye et
     await tx
       .insert(tenantsUsers)
       .values({
         userId: payload.userId,
         tenantId: newTenant.id,
         role: "admin",
-      })
-
-    // bu tenant ile ilişkili, bu tenant'ı oluşturan kullanıcıyı temsil edecek container oluştur.
-    await tx
-      .insert(containers)
-      .values({
-        tenantId: newTenant.id,
-        name: user!.name,
-        description: "Items with me"
-      })
+      });
 
     return newTenant;
-
-  })
+  });
 
   return c.json(tenant, 201);
 });
 
+app.post("/tenants/users", zValidator("json", postTenantsUsersSchema), jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+  const { users } = c.req.valid("json");
+
+  const [isAdmin] = await db
+    .select()
+    .from(tenantsUsers)
+    .where(and(eq(tenantsUsers.tenantId, payload.tenantId), eq(tenantsUsers.userId, payload.userId), eq(tenantsUsers.role, "admin")))
+  if (!isAdmin) throw new HTTPException(403, { message: "Access denied" });
+
+  const tenantsUsersList = await db
+    .insert(tenantsUsers)
+    .values(users.map(({ userId, role }) => ({
+      tenantId: payload.tenantId,
+      userId: userId,
+      role: role,
+    })))
+    .returning();
+
+  return c.json(tenantsUsersList, 201);
+});
 
 export default app;

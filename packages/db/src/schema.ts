@@ -83,11 +83,14 @@ export const items = pgTable("items", {
     .$onUpdate(() => new Date()),
 });
 
-export const containersItems = pgTable("containers_items", {
+
+export const itemsWhereAbouts = pgTable("items_where_abouts", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   itemId: uuid("item_id").references(() => items.id, { onDelete: "cascade" }).notNull(),
   containerId: uuid("container_id").references(() => containers.id, { onDelete: "set null" }),
-  changedAt: timestamp("changed_at").defaultNow().notNull(),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+
 });
 
 

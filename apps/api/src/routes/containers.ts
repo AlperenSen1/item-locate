@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { type AppVariables } from "../index.ts";
 import { jwtMiddleware } from "../index.ts";
 import { db, tenants } from "@item-locate/db";
-import { containers, items, containersItems  } from "@item-locate/db";
-import { eq, and, inArray } from "drizzle-orm";
+import { containers, items, itemsWhereAbouts  } from "@item-locate/db";
+import { eq, and, inArray, max } from "drizzle-orm";
 import { idParamSchema, postContainerSchema, containerItemSchema } from "@item-locate/validators";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
@@ -57,36 +57,23 @@ app.get("/containers/:id/items", zValidator("param", idParamSchema), jwtMiddlewa
       name: items.name,
       isPinned: items.isPinned,
       status: items.status,
-
     })
-    .from(containersItems)
-    .innerJoin(items, eq(containersItems.itemId, items.id))
-    .where(eq(containersItems.containerId, containerId));
+    .from(itemsWhereAbouts)
+    .innerJoin(items, eq(itemsWhereAbouts.itemId, items.id))
+    .where(and(
+      eq(itemsWhereAbouts.containerId, containerId),
+      eq(
+        itemsWhereAbouts.createdAt,
+        db.select({ maxDate: max(itemsWhereAbouts.createdAt) })
+          .from(itemsWhereAbouts)
+          .where(eq(itemsWhereAbouts.itemId, items.id))
+          .as("maxDate")
+      )
+    ))
 
   return c.json(itemList);
 })
 
-app.get("/containers/:id/items/:itemId", zValidator("param", z.object({ id: z.uuid(), itemId: z.uuid() })), jwtMiddleware, async (c) => {
-  const payload = c.get("jwtPayload");
-  const { id: containerId } = c.req.valid("param");
-
-  const [container] = await db
-    .select()
-    .from(containers)
-    .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
-  if (!container) throw new HTTPException(403, { message: "Access denied" });
-
-  const { itemId } = c.req.valid("param");
-
-  const [item] = await db
-    .select()
-    .from(containersItems)
-    .innerJoin(items, eq(items.id, containersItems.itemId))
-    .where(and(eq(containersItems.containerId, containerId), eq(containersItems.itemId, itemId)));
-  if (!item) throw new HTTPException(404, { message: "Item not found" });
-
-  return c.json(item);
-})
 
 // !!!!!!!!auth-register da kendimiz insertion için hata mesajı oluşturmuşken burada neden oluşturmadık ANLAMADIM
 app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, async (c) => {
@@ -103,14 +90,12 @@ app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, 
 
 })
 
-app.post("/containers/:id/items",
-  zValidator("param", z.object({ id: z.uuid() })),
-  zValidator("json", z.object({ itemIds: z.array(z.uuid()).min(1) })),
+app.post("/containers/:id/items/:itemId",
+  zValidator("param", z.object({ id: z.uuid(), itemId: z.uuid() })),
   jwtMiddleware,
   async (c) => {
     const payload = c.get("jwtPayload");
-    const { id: containerId } = c.req.valid("param");
-    const { itemIds } = c.req.valid("json");
+    const { id: containerId, itemId } = c.req.valid("param");
 
     // konteyner aktif tenant ile ilişkili mi
     const [container] = await db
@@ -119,37 +104,32 @@ app.post("/containers/:id/items",
       .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
     if (!container) throw new HTTPException(403, { message: "Access denied" });
 
-    // her item aktif tenant ile ilişkili mi
-    const itemList = await db
+    // item aktif tenant ile ilişkili mi
+    const [item] = await db
       .select()
       .from(items)
-      .where(and(
-        inArray(items.id, itemIds),
-        eq(items.tenantId, payload.tenantId)
-      ));
-    if (itemList.length !== itemIds.length) throw new HTTPException(403, { message: "Access denied" });
+      .where(and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId)));
+    if (!item) throw new HTTPException(403, { message: "Access denied" });
 
-    const containersItemsList = await db.transaction(async (tx) => {
-          // containersItems tablosuna ekle
-          const inserted = await tx
-            .insert(containersItems)
-            .values(itemList.map(item => ({
-              containerId,
-              itemId: item.id,
-              userId: payload.userId,
-            })))
-            .returning();
+    const result = await db.transaction(async (tx) => {
+      const [inserted] = await tx
+        .insert(itemsWhereAbouts)
+        .values({
+          itemId,
+          userId: null,
+          containerId,
+        })
+        .returning();
 
-          // items tablosundaki status'leri "stored" yap
-          await tx
-            .update(items)
-            .set({ status: "stored" })
-            .where(inArray(items.id, itemIds));
+      await tx
+        .update(items)
+        .set({ status: "stored" })
+        .where(eq(items.id, itemId));
 
-          return inserted;
-        });
+      return inserted;
+    });
 
-        return c.json(containersItemsList, 201);
+    return c.json(result, 201);
   }
 )
 

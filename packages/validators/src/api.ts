@@ -38,3 +38,7 @@ export const containerItemSchema = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
 });
+
+export const postTenantsUsersSchema = z.object({
+  users: z.array(z.object({ userId: z.uuid(), role: roleEnum })),
+})
