@@ -5,7 +5,7 @@ import { sign, verify, jwt } from "hono/jwt";
 import { zValidator } from "@hono/zod-validator";
 import { db } from "@item-locate/db";
 import { idParamSchema } from "@item-locate/validators";
-import { users, tenants, tenantsUsers } from "@item-locate/db";
+import { users, tenants, tenantsUsers, containers } from "@item-locate/db";
 import { type AppVariables, jwtMiddleware } from "../index";
 import z from "zod";
 import { id } from "zod/v4/locales";
@@ -138,8 +138,14 @@ app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { mes
   const payload = c.get("jwtPayload");
   const { name } = c.req.valid("json");
 
- const tenant = await db.transaction(async (tx) => {
+  // kullanıcının adını çek
+  const [user] = await db
+    .select({ name: users.name })
+    .from(users)
+    .where(eq(users.id, payload.userId));
 
+  const tenant = await db.transaction(async (tx) => {
+    //yeni tenant'ı oluştur
     const [newTenant] = await tx
       .insert(tenants)
       .values({
@@ -148,6 +154,7 @@ app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { mes
       .returning();
     if (!newTenant) throw new Error("Tenant insertion failed");
 
+    // oluşturan kullanıcıyı admin olarak bu tenant'a üye et
     await tx
       .insert(tenantsUsers)
       .values({
@@ -155,7 +162,17 @@ app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { mes
         tenantId: newTenant.id,
         role: "admin",
       })
-   return newTenant;
+
+    // bu tenant ile ilişkili, bu tenant'ı oluşturan kullanıcıyı temsil edecek container oluştur.
+    await tx
+      .insert(containers)
+      .values({
+        tenantId: newTenant.id,
+        name: user!.name,
+        description: "Items with me"
+      })
+
+    return newTenant;
 
   })
 
