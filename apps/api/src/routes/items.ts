@@ -42,7 +42,7 @@ app.get("/items/:id", zValidator("param", idParamSchema), jwtMiddleware, async (
 
 app.post("/items", zValidator("json", postItemSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
-  const { name, category, location, className, isPinned, isHidden, status } = c.req.valid("json");
+  const { name, category, location, className, isPinned, isHidden } = c.req.valid("json");
   const [item] = await db
     .insert(items)
     .values({
@@ -52,7 +52,6 @@ app.post("/items", zValidator("json", postItemSchema), jwtMiddleware, async (c) 
       className,
       isPinned,
       isHidden,
-      status,
       tenantId: payload.tenantId,
     })
     .returning();

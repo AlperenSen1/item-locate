@@ -129,17 +129,27 @@ app.post("/containers/:id/items",
       ));
     if (itemList.length !== itemIds.length) throw new HTTPException(403, { message: "Access denied" });
 
-    // hepsini birden ekle
-    const containersItemsList = await db
-      .insert(containersItems)
-      .values(itemList.map(item => ({                   //itemList deki her item için teker teker işlem yap
-        containerId,
-        itemId: item.id,
-        userId: payload.userId,
-      })))
-      .returning();
+    const containersItemsList = await db.transaction(async (tx) => {
+          // containersItems tablosuna ekle
+          const inserted = await tx
+            .insert(containersItems)
+            .values(itemList.map(item => ({
+              containerId,
+              itemId: item.id,
+              userId: payload.userId,
+            })))
+            .returning();
 
-    return c.json(containersItemsList, 201);
+          // items tablosundaki status'leri "stored" yap
+          await tx
+            .update(items)
+            .set({ status: "stored" })
+            .where(inArray(items.id, itemIds));
+
+          return inserted;
+        });
+
+        return c.json(containersItemsList, 201);
   }
 )
 

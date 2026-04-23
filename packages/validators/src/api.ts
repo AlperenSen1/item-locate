@@ -32,7 +32,6 @@ export const postItemSchema = z.object({
   className: z.string().optional(),
   isPinned: z.boolean().optional(),
   isHidden: z.boolean().optional(),
-  status: itemStatusEnum.optional(),
 });
 
 export const containerItemSchema = z.object({
