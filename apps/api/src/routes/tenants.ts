@@ -22,6 +22,7 @@ app.get("/tenants", jwtMiddleware, async (c) => {
     .select({
       id: tenants.id,
       name: tenants.name,
+      createdAt: tenants.createdAt,
     })
     .from(tenantsUsers)
     .innerJoin(tenants, eq(tenantsUsers.tenantId, tenants.id))
@@ -30,39 +31,7 @@ app.get("/tenants", jwtMiddleware, async (c) => {
   return c.json(tenantList);
 });
 
-// returns the tenant info by id, if the user is a member or admin of that tenant
-app.get("/tenants/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
-  const payload = c.get("jwtPayload");
-  const { id: tenantId } = c.req.valid("param");
 
-  // kullanıcının bu tenant'a üyeliği var mı?
-  const [membership] = await db
-    .select()
-    .from(tenantsUsers)
-    .where(and(
-      eq(tenantsUsers.userId, payload.userId),
-      eq(tenantsUsers.tenantId, tenantId)
-    ));
-
-  if (!membership) throw new HTTPException(403, { message: "Access denied" });
-
-  // erişim serbest, tenant bilgilerini getir
-  const [tenant] = await db
-    .select({
-      id: tenants.id,
-      name: tenants.name,
-      createdAt: tenants.createdAt,
-      memberCount: db
-        .select({ count: count() })
-        .from(tenantsUsers)
-        .where(eq(tenantsUsers.tenantId, tenants.id))
-        .as("memberCount"),
-    })
-    .from(tenants)
-    .where(eq(tenants.id, tenantId));
-
-  return c.json(tenant);
-});
 
 app.get("/tenants/:id/users", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
