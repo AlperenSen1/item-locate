@@ -2,7 +2,6 @@
 import { z } from "zod";
 
 export const itemStatusEnum = z.enum([
-  "with_you",
   "missing",
   "not_set",
   "stored"
