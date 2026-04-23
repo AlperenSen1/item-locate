@@ -3,7 +3,7 @@ import { type AppVariables } from "../index.ts";
 import { jwtMiddleware } from "../index.ts";
 import { db, tenants } from "@item-locate/db";
 import { containers, items, containersItems  } from "@item-locate/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 import { idParamSchema, postContainerSchema, containerItemSchema } from "@item-locate/validators";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
@@ -103,34 +103,43 @@ app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, 
 
 })
 
-app.post("/containers/:id/items/:itemId", zValidator("param", containerItemSchema), jwtMiddleware, async (c) => {
-
+app.post("/containers/:id/items",
+  zValidator("param", z.object({ id: z.uuid() })),
+  zValidator("json", z.object({ itemIds: z.array(z.uuid()).min(1) })),
+  jwtMiddleware,
+  async (c) => {
     const payload = c.get("jwtPayload");
-    const { id: containerId, itemId } = c.req.valid("param");
+    const { id: containerId } = c.req.valid("param");
+    const { itemIds } = c.req.valid("json");
 
+    // konteyner aktif tenant ile ilişkili mi
     const [container] = await db
       .select()
       .from(containers)
       .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
     if (!container) throw new HTTPException(403, { message: "Access denied" });
 
-    const [item] = await db
+    // her item aktif tenant ile ilişkili mi
+    const itemList = await db
       .select()
       .from(items)
-      .where(and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId)));
-    if (!item) throw new HTTPException(403, { message: "Access denied" });
+      .where(and(
+        inArray(items.id, itemIds),
+        eq(items.tenantId, payload.tenantId)
+      ));
+    if (itemList.length !== itemIds.length) throw new HTTPException(403, { message: "Access denied" });
 
-    const [containersItem] = await db
+    // hepsini birden ekle
+    const containersItemsList = await db
       .insert(containersItems)
-      .values({
+      .values(itemList.map(item => ({                   //itemList deki her item için teker teker işlem yap
         containerId,
-        itemId,
+        itemId: item.id,
         userId: payload.userId,
-        status: item.status
-      })
+      })))
       .returning();
 
-    return c.json(containersItem, 201);
+    return c.json(containersItemsList, 201);
   }
 )
 
