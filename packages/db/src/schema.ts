@@ -87,8 +87,6 @@ export const containersItems = pgTable("containers_items", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   itemId: uuid("item_id").references(() => items.id, { onDelete: "cascade" }).notNull(),
   containerId: uuid("container_id").references(() => containers.id, { onDelete: "set null" }),
-  userId: uuid("user_id").references(() => users.id).notNull(),
-  status: varchar("status", { length: 50 }).default("not_set").notNull(),
   changedAt: timestamp("changed_at").defaultNow().notNull(),
 });
 
