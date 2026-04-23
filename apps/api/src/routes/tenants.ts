@@ -134,7 +134,33 @@ app.get("/tenants/:id/users/:userId", zValidator("param", z.object({ id: z.uuid(
   }
 );
 
+app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { message: "Name is required" }) })), jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+  const { name } = c.req.valid("json");
 
+ const tenant = await db.transaction(async (tx) => {
+
+    const [newTenant] = await tx
+      .insert(tenants)
+      .values({
+        name: name,
+      })
+      .returning();
+    if (!newTenant) throw new Error("Tenant insertion failed");
+
+    await tx
+      .insert(tenantsUsers)
+      .values({
+        userId: payload.userId,
+        tenantId: newTenant.id,
+        role: "admin",
+      })
+   return newTenant;
+
+  })
+
+  return c.json(tenant, 201);
+});
 
 
 export default app;
