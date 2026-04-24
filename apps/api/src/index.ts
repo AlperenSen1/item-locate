@@ -1,8 +1,11 @@
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
 import { HTTPException } from "hono/http-exception";
-import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
 import authsApp from "./routes/auth.ts";
+import containersApp from "./routes/containers.ts";
+import itemsApp from "./routes/items.ts";
+import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
+import usersApp from "./routes/users.ts";
 
 
 export type AppVariables = {
@@ -32,5 +35,8 @@ app.onError((err, c) => {
 
 app.route("/tenants", tenantsApp);
 app.route("/auths", authsApp);
+app.route("/containers", containersApp);
+app.route("/items", itemsApp);
+app.route("/users", usersApp);
 
 export default app;

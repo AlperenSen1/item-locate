@@ -34,7 +34,7 @@ export const postItemSchema = z.object({
   isHidden: z.boolean().optional(),
 });
 
-export const containerItemSchema = z.object({
+export const postContainersItemsSchema = z.object({
   id: z.uuid(),
   itemId: z.uuid(),
 });

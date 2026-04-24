@@ -4,7 +4,7 @@ import { jwtMiddleware } from "../index.ts";
 import { db, tenants } from "@item-locate/db";
 import { containers, items, itemsWhereAbouts  } from "@item-locate/db";
 import { eq, and, inArray, max } from "drizzle-orm";
-import { idParamSchema, postContainerSchema, containerItemSchema } from "@item-locate/validators";
+import { idParamSchema, postContainerSchema, postContainersItemsSchema } from "@item-locate/validators";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -91,7 +91,7 @@ app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, 
 })
 
 app.post("/containers/:id/items/:itemId",
-  zValidator("param", z.object({ id: z.uuid(), itemId: z.uuid() })),
+  zValidator("param", postContainersItemsSchema),
   jwtMiddleware,
   async (c) => {
     const payload = c.get("jwtPayload");

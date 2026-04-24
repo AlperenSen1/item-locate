@@ -59,39 +59,5 @@ app.post("/items", zValidator("json", postItemSchema), jwtMiddleware, async (c) 
   return c.json(item, 201);
 })
 
-app.post("/items/:id/claim", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
-  const payload = c.get("jwtPayload");
-  const { id: itemId } = c.req.valid("param");
-
-  //item senin tenantın ile ilşkili mi
-  const [item] = await db
-    .select()
-    .from(items)
-    .where(and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId)));
-  if (!item) throw new HTTPException(403, { message: "Access denied" });
-
-  const result = await db.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(itemsWhereAbouts)
-      .values({
-        itemId,
-        userId: payload.userId,
-        containerId: null,
-      })
-      .returning();
-
-    await tx
-      .update(items)
-      .set({ status: "stored" })
-      .where(eq(items.id, itemId));
-
-    return inserted;
-
-  });
-
-  return c.json(result, 201);
-
-})
-
 
 export default app;
