@@ -14,7 +14,6 @@ import { z } from "zod";
 const app = new Hono<{ Variables: AppVariables }>();
 
 
-// Register Route
 app.post("/auth/register", zValidator("json", registerSchema), async (c) => {
   const { name, email, password } = c.req.valid("json");
 
