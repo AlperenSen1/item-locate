@@ -214,14 +214,3 @@ users ──────────────── tenantsUsers ────
 - **itemsWhereAbouts** tracks the location history of each item — whether it is in a container, with a specific user, or missing.
 
 ---
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `bun dev` | Start the development server with hot reload |
-| `bun db:generate` | Generate Drizzle migration files |
-| `bun db:migrate` | Apply migrations to the database |
-| `bun install` | Install all dependencies across the monorepo |
-
----
