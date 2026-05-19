@@ -5,11 +5,15 @@
     "dev": "bun run --hot src/index.ts"
   },
   "dependencies": {
-    "hono": "latest",
-    "drizzle-orm": "^0.45.2",
-     "zod": "latest",
     "@hono/zod-validator": "latest",
     "@item-locate/db": "workspace:*",
-    "@item-locate/validators": "workspace:*"
+    "@item-locate/types": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "hono": "latest",
+    "luxon": "^3.7.2",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1"
   }
 }

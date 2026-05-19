@@ -12,7 +12,8 @@
     "db:migrate": "drizzle-kit migrate"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@types/bun": "latest",
+    "drizzle-kit": "latest"
   },
   "peerDependencies": {
     "typescript": "^5"

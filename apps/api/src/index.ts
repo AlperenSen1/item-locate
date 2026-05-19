@@ -1,26 +1,12 @@
 import { Hono } from "hono";
 import { jwt } from "hono/jwt";
 import { HTTPException } from "hono/http-exception";
+import type { AppVariables } from "./types.ts";
 import authsApp from "./routes/auth.ts";
 import containersApp from "./routes/containers.ts";
 import itemsApp from "./routes/items.ts";
 import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
 import usersApp from "./routes/users.ts";
-
-
-export type AppVariables = {
-  jwtPayload: {
-    userId: string;
-    tenantId: string;
-    role: string;
-    exp: number;
-  };
-};
-
-export const jwtMiddleware = jwt({
-  secret: process.env.JWT_SECRET!,
-  alg: "HS256"
-});
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -34,7 +20,7 @@ app.onError((err, c) => {
 });
 
 app.route("/tenants", tenantsApp);
-app.route("/auths", authsApp);
+app.route("/auth", authsApp);
 app.route("/containers", containersApp);
 app.route("/items", itemsApp);
 app.route("/users", usersApp);

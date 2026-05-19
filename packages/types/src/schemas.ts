@@ -1,5 +1,5 @@
 import { describe, z } from "zod";
-import { itemStatusEnum, roleEnum } from "@item-locate/validators";
+import { itemStatusEnum, roleEnum } from "@item-locate/types";
 
 export const loginSchema = z.object({
   email: z.email({ message: "Invalid email address" }),

@@ -1,5 +1,5 @@
 {
-  "name": "@item-locate/validators",
+  "name": "@item-locate/types",
   "version": "1.0.0",
   "main": "./src/index.ts",
   "dependencies": {

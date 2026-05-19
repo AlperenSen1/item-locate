@@ -1,54 +1,52 @@
 import { Hono } from "hono";
-import { type AppVariables } from "../index.ts";
-import { jwtMiddleware } from "../index.ts";
+import { type AppVariables } from "../types.ts";
+import { jwtMiddleware } from "../middleware.ts";
 import { db, tenants } from "@item-locate/db";
 import { containers, items, itemsWhereAbouts  } from "@item-locate/db";
 import { eq, and, inArray, max } from "drizzle-orm";
-import { idParamSchema, postContainerSchema, postContainersItemsSchema } from "@item-locate/validators";
+import { idParamSchema, postContainerSchema, postContainersItemsSchema } from "@item-locate/types";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.get("/containers", jwtMiddleware, async (c) => {
+app.get("/", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
 
-  const containerList = await db
-    .select({
-      id: containers.id,
-      name: containers.name,
-      isHidden: containers.isHidden,
-    })
-    .from(containers)
-    .where(eq(containers.tenantId, payload.tenantId))
+  const containerList = await db.query.containers.findMany({
+    where: eq(containers.tenantId, payload.tenantId),
+    columns: {
+      id: true,
+      name: true,
+      isHidden: true
+    }
+  })
 
   return c.json(containerList);
 })
 
-app.get("/containers/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
   const { id: containerId } = c.req.valid("param");
 
-  const [container] = await db
-    .select()
-    .from(containers)
-    .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
+  const container = await db.query.containers.findFirst({
+    where: and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId))
+  })
   if (!container) throw new HTTPException(403, { message: "Access denied" });
 
   return c.json(container);
 })
 
-app.get("/containers/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: containerId } = c.req.valid("param");
 
-  const [container] = await db
-    .select()
-    .from(containers)
-    .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
+  const container = await db.query.containers.findFirst({
+    where: and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId))
+  })
   if (!container) throw new HTTPException(403, { message: "Access denied" });
 
   const itemList = await db
@@ -76,21 +74,20 @@ app.get("/containers/:id/items", zValidator("param", idParamSchema), jwtMiddlewa
 
 
 // !!!!!!!!auth-register da kendimiz insertion için hata mesajı oluşturmuşken burada neden oluşturmadık ANLAMADIM
-app.post("/containers", zValidator("json", postContainerSchema), jwtMiddleware, async (c) => {
+app.post("/", zValidator("json", postContainerSchema), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
-  const { name, description, location, className, isHidden } = c.req.valid("json");
 
   const [container] = await db
     .insert(containers)
-    .values({ name, description, location, className, isHidden, tenantId: payload.tenantId })
+    .values({ ...c.req.valid("json"), tenantId: payload.tenantId })
     .returning();
 
-  return c.json(container, 201); //burada oluşturduğumuz container bilgilerini dönmek mi mantıklı yoksa successfully created 201 yeter mi
+  return c.json(container, 201);
 
 })
 
-app.post("/containers/:id/items/:itemId",
+app.post("/:id/items/:itemId",
   zValidator("param", postContainersItemsSchema),
   jwtMiddleware,
   async (c) => {
@@ -98,17 +95,15 @@ app.post("/containers/:id/items/:itemId",
     const { id: containerId, itemId } = c.req.valid("param");
 
     // konteyner aktif tenant ile ilişkili mi
-    const [container] = await db
-      .select()
-      .from(containers)
-      .where(and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId)));
+    const container = await db.query.containers.findFirst({
+      where: and(eq(containers.id, containerId), eq(containers.tenantId, payload.tenantId))
+    })
     if (!container) throw new HTTPException(403, { message: "Access denied" });
 
     // item aktif tenant ile ilişkili mi
-    const [item] = await db
-      .select()
-      .from(items)
-      .where(and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId)));
+    const item = await db.query.items.findFirst({
+      where: and(eq(items.id, itemId), eq(items.tenantId, payload.tenantId))
+    })
     if (!item) throw new HTTPException(403, { message: "Access denied" });
 
     const result = await db.transaction(async (tx) => {
