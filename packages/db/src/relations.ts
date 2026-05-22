@@ -9,6 +9,7 @@ import {
   scenarios,
   scenarioItems,
   events,
+  premises,
 } from "./schema";
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -41,8 +42,20 @@ export const containersRelations = relations(containers, ({ one, many }) => ({
     fields: [containers.tenantId],
     references: [tenants.id],
   }),
+  premise: one(premises, {
+    fields: [containers.premiseId],
+    references: [premises.id],
+  }),
   itemsWhereAbouts: many(itemsWhereAbouts),
 }));
+
+export const premisesRelations = relations(premises, ({ one, many }) => ({
+  tenant: one(tenants, {
+    fields: [premises.tenantId],
+    references: [tenants.id],
+  }),
+  containers: many(containers),
+}))
 
 export const itemsRelations = relations(items, ({ one, many }) => ({
   tenant: one(tenants, {

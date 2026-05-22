@@ -8,6 +8,8 @@
     "@hono/zod-validator": "latest",
     "@item-locate/db": "workspace:*",
     "@item-locate/types": "workspace:*",
+    "@langchain/core": "^1.1.48",
+    "@langchain/google-genai": "^2.1.31",
     "drizzle-orm": "^0.45.2",
     "hono": "latest",
     "luxon": "^3.7.2",

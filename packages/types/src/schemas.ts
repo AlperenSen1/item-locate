@@ -42,3 +42,24 @@ export const postContainersItemsSchema = z.object({
 export const postTenantsUsersSchema = z.object({
   users: z.array(z.object({ userId: z.uuid(), role: roleEnum })),
 })
+
+export const postPremiseSchema = z.object({
+  name: z.string().min(1, { message: "Name is required" }),
+  location: z.object({
+    x: z.number(),
+    y: z.number(),
+  })
+})
+
+export const patchPremiseSchema = z.object({
+  name: z.string().min(1).optional(),
+  location: z.object({
+    x: z.number(),
+    y: z.number(),
+  }).optional()
+})
+
+export const pathAnalyzeSchema = z.object({
+  closeUpPath: z.string(),
+  widePath: z.string(),
+})

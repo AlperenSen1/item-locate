@@ -9,6 +9,7 @@ import {
   pgEnum,
   jsonb,
   unique,
+  point,
 } from "drizzle-orm/pg-core";
 
 import { v7 as uuidv7 } from "uuid";
@@ -49,11 +50,19 @@ export const tenantsUsers = pgTable("tenants_users", {
   (t) => [unique("tenant_user_unique").on(t.tenantId, t.userId)]
 );
 
-// --- DOMAIN TABLES ---
+
+export const premises = pgTable("premises", {
+  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  location: point("location", { mode: "xy" }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+})
 
 export const containers = pgTable("containers", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  premiseId: uuid("premise_id").references(() => premises.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   location: text("location"),
