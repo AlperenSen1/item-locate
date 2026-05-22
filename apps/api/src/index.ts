@@ -7,12 +7,9 @@ import containersApp from "./routes/containers.ts";
 import itemsApp from "./routes/items.ts";
 import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
 import usersApp from "./routes/users.ts";
-<<<<<<< Updated upstream
-=======
 import premisesApp from "./routes/premises.ts";
+import analyzeApp from "./routes/analyze.ts";
 
-
->>>>>>> Stashed changes
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -30,11 +27,8 @@ app.route("/auth", authsApp);
 app.route("/containers", containersApp);
 app.route("/items", itemsApp);
 app.route("/users", usersApp);
-<<<<<<< Updated upstream
-=======
 app.route("/premises", premisesApp);
+app.route("/analyze", analyzeApp);
 
-
->>>>>>> Stashed changes
 
 export default app;
