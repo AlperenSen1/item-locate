@@ -17,7 +17,7 @@ app.post("/", zValidator("json", pathAnalyzeSchema), async (c) => {
   const gemini = ai({
     name: "google-gemini",
     apiKey: config.googleApiKey,
-    config: { model: AxAIGoogleGeminiModel.Gemini20FlashLite }
+    config: { model: AxAIGoogleGeminiModel.Gemini25FlashLite }
   })
 
   const response = await gemini.chat({
