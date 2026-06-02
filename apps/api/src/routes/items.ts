@@ -7,6 +7,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { zValidator } from "@hono/zod-validator";
 import { idParamSchema, postItemSchema } from "@item-locate/types";
 import { HTTPException } from "hono/http-exception";
+import { getImageEmbedding } from "../embeddings.ts";
 
 
 const app = new Hono<{ Variables: AppVariables }>();
@@ -43,10 +44,18 @@ app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => 
 
 app.post("/", zValidator("json", postItemSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
+  const { imageBase64, ...rest } = c.req.valid("json");
+
+  let embedding: number[] | null = null;
+
+  if (imageBase64) {
+    embedding = await getImageEmbedding(imageBase64);
+  }
   const [item] = await db
     .insert(items)
     .values({
-      ...c.req.valid("json"),
+      ...rest,
+      embedding,
       tenantId: payload.tenantId,
     })
     .returning();

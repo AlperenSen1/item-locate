@@ -80,6 +80,7 @@ export const containers = pgTable("containers", {
 export const items = pgTable("items", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  embedding: vector("embedding", { dimensions: 768 }),
   category: varchar("category").default("Other").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   location: text("location"),
