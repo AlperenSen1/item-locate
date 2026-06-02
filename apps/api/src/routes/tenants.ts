@@ -15,10 +15,9 @@ import { id } from "zod/v4/locales";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-//returns all tenants' infos that the user is a member or admin of
 app.get("/", jwtMiddleware, async (c) => {
 
-  const payload = c.get("jwtPayload"); //retuns unknown, thats why i used AppVariables
+  const payload = c.get("jwtPayload");
 
 
   const tenantsUsersList = await db.query.tenantsUsers.findMany({

@@ -51,7 +51,6 @@ app.post("/register", zValidator("json", registerSchema), async (c) => {
   return c.json({ message: "Successfully registered" }, 201);
 });
 
-//Login Route
 app.post("/login", zValidator("json", loginSchema), async (c) => {
 
   const { email, password, tenantId } = c.req.valid("json");
