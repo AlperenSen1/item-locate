@@ -10,6 +10,7 @@ import {
   jsonb,
   unique,
   point,
+  vector,
 } from "drizzle-orm/pg-core";
 
 import { v7 as uuidv7 } from "uuid";
@@ -63,6 +64,7 @@ export const containers = pgTable("containers", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
   premiseId: uuid("premise_id").references(() => premises.id, { onDelete: "set null" }),
+  embedding: vector("embedding", { dimensions: 768 }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
   location: text("location"),

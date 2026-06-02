@@ -8,6 +8,8 @@ import { idParamSchema, postContainerSchema, postContainersItemsSchema } from "@
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
+import { getImageEmbedding } from "../embeddings.ts";
+
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -72,20 +74,23 @@ app.get("/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (
   return c.json(itemList);
 })
 
-
-// !!!!!!!!auth-register da kendimiz insertion için hata mesajı oluşturmuşken burada neden oluşturmadık ANLAMADIM
 app.post("/", zValidator("json", postContainerSchema), jwtMiddleware, async (c) => {
-
   const payload = c.get("jwtPayload");
+  const { imageBase64, ...rest } = c.req.valid("json");
+
+  let embedding: number[] | null = null;
+
+  if (imageBase64) {
+    embedding = await getImageEmbedding(imageBase64);
+  }
 
   const [container] = await db
     .insert(containers)
-    .values({ ...c.req.valid("json"), tenantId: payload.tenantId })
+    .values({ ...rest, embedding, tenantId: payload.tenantId })
     .returning();
 
   return c.json(container, 201);
-
-})
+});
 
 app.post("/:id/items/:itemId",
   zValidator("param", postContainersItemsSchema),
