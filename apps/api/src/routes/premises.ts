@@ -10,8 +10,7 @@ import { z } from "zod"
 
 const app = new Hono<{ Variables: AppVariables }>()
 
-// GET /premises
-app.get("/", jwtMiddleware, async (c) => {
+app.get("/premises", jwtMiddleware, async (c) => {
   const { tenantId } = c.get("jwtPayload")
   const premiseList = await db.query.premises.findMany({
     where: eq(premises.tenantId, tenantId)
@@ -19,8 +18,7 @@ app.get("/", jwtMiddleware, async (c) => {
   return c.json(premiseList)
 })
 
-// POST /premises
-app.post("/", zValidator("json", postPremiseSchema), jwtMiddleware, async (c) => {
+app.post("/premises", zValidator("json", postPremiseSchema), jwtMiddleware, async (c) => {
   const { tenantId } = c.get("jwtPayload")
   const { name, location } = c.req.valid("json")
   const [premise] = await db
@@ -30,8 +28,7 @@ app.post("/", zValidator("json", postPremiseSchema), jwtMiddleware, async (c) =>
   return c.json(premise, 201)
 })
 
-// GET /premises/:id
-app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/premises/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const { tenantId } = c.get("jwtPayload")
   const { id } = c.req.valid("param")
   const premise = await db.query.premises.findFirst({
@@ -41,8 +38,7 @@ app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => 
   return c.json(premise)
 })
 
-// PATCH /premises/:id
-app.patch("/:id", zValidator("param", idParamSchema), zValidator("json", patchPremiseSchema), jwtMiddleware, async (c) => {
+app.patch("/premises/:id", zValidator("param", idParamSchema), zValidator("json", patchPremiseSchema), jwtMiddleware, async (c) => {
   const { tenantId } = c.get("jwtPayload")
   const { id } = c.req.valid("param")
   const data = c.req.valid("json")
@@ -61,8 +57,7 @@ app.patch("/:id", zValidator("param", idParamSchema), zValidator("json", patchPr
   return c.json(updated)
 })
 
-// DELETE /premises/:id
-app.delete("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.delete("/premises/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const { tenantId } = c.get("jwtPayload")
   const { id } = c.req.valid("param")
 

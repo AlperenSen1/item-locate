@@ -12,7 +12,7 @@ import { getImageEmbedding } from "../embeddings.ts";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.get("/", jwtMiddleware, async (c) => {
+app.get("/items", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
 
@@ -30,7 +30,7 @@ app.get("/", jwtMiddleware, async (c) => {
   return c.json(userItems);
 });
 
-app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/items/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: itemId } = c.req.valid("param");
 
@@ -42,7 +42,7 @@ app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => 
   return c.json(item);
 })
 
-app.post("/", jwtMiddleware, async (c) => {
+app.post("/items", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
 
   const body = await c.req.parseBody();
@@ -73,7 +73,7 @@ app.post("/", jwtMiddleware, async (c) => {
   return c.json(item, 201);
 });
 
-app.get("/:id/where", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/items/:id/where", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: itemId } = c.req.valid("param");
 
@@ -115,7 +115,7 @@ app.get("/:id/where", zValidator("param", idParamSchema), jwtMiddleware, async (
   return c.json({ message: "missing" });
 });
 
-app.post("/:id/missing", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.post("/items/:id/missing", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: itemId } = c.req.valid("param");
 

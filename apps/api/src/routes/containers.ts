@@ -13,7 +13,7 @@ import { getImageEmbedding } from "../embeddings.ts";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.get("/", jwtMiddleware, async (c) => {
+app.get("/containers", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
 
@@ -29,7 +29,7 @@ app.get("/", jwtMiddleware, async (c) => {
   return c.json(containerList);
 })
 
-app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/containers/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
   const { id: containerId } = c.req.valid("param");
@@ -42,7 +42,7 @@ app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => 
   return c.json(container);
 })
 
-app.get("/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.get("/containers/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: containerId } = c.req.valid("param");
 
@@ -74,7 +74,7 @@ app.get("/:id/items", zValidator("param", idParamSchema), jwtMiddleware, async (
   return c.json(itemList);
 })
 
-app.post("/", jwtMiddleware, async (c) => {
+app.post("/containers", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
 
   const body = await c.req.parseBody();
@@ -101,7 +101,7 @@ app.post("/", jwtMiddleware, async (c) => {
   return c.json(container, 201);
 });
 
-app.post("/:id/items/:itemId",
+app.post("/containers/:id/items/:itemId",
   zValidator("param", postContainersItemsSchema),
   jwtMiddleware,
   async (c) => {

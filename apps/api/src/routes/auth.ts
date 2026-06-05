@@ -17,7 +17,7 @@ import { config } from "../../utils/config.ts"
 const app = new Hono<{ Variables: AppVariables }>();
 
 
-app.post("/register", zValidator("json", registerSchema), async (c) => {
+app.post("/auth/register", zValidator("json", registerSchema), async (c) => {
   const { name, email, password } = c.req.valid("json");
 
   const passwordHash = await Bun.password.hash(password);
@@ -51,8 +51,8 @@ app.post("/register", zValidator("json", registerSchema), async (c) => {
   return c.json({ message: "Successfully registered" }, 201);
 });
 
-//Login Route
-app.post("/login", zValidator("json", loginSchema), async (c) => {
+
+app.post("/auth/login", zValidator("json", loginSchema), async (c) => {
 
   const { email, password, tenantId } = c.req.valid("json");
 
@@ -100,7 +100,7 @@ app.post("/login", zValidator("json", loginSchema), async (c) => {
 });
 
 
-app.post("/token/refresh", zValidator("json", z.object({ tenantId: z.uuid() })), jwtMiddleware, async (c) => {
+app.post("/auth/token/refresh", zValidator("json", z.object({ tenantId: z.uuid() })), jwtMiddleware, async (c) => {
 
   const { tenantId } = c.req.valid("json");
   const payload = c.get("jwtPayload");
@@ -124,7 +124,7 @@ app.post("/token/refresh", zValidator("json", z.object({ tenantId: z.uuid() })),
 });
 
 
-app.get("/me", jwtMiddleware, async (c) => {
+app.get("/auth/me", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const tenantsUser = await db.query.tenantsUsers.findFirst({
     where: and(eq(tenantsUsers.tenantId, payload.tenantId), eq(tenantsUsers.userId, payload.userId)),

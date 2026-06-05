@@ -11,7 +11,7 @@ import { HTTPException } from "hono/http-exception";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
-app.post("/me/items/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
+app.post("/users/me/items/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { id: itemId } = c.req.valid("param");
 

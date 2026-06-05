@@ -16,7 +16,7 @@ import { id } from "zod/v4/locales";
 const app = new Hono<{ Variables: AppVariables }>();
 
 //returns all tenants' infos that the user is a member or admin of
-app.get("/", jwtMiddleware, async (c) => {
+app.get("/tenants", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload"); //retuns unknown, thats why i used AppVariables
 
@@ -41,7 +41,7 @@ app.get("/", jwtMiddleware, async (c) => {
 
 
 
-app.get("/users", jwtMiddleware, async (c) => {
+app.get("/tenants/users", jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
 
@@ -65,7 +65,7 @@ app.get("/users", jwtMiddleware, async (c) => {
   return c.json(members);
 });
 
-app.get("/users/:userId", zValidator("param", z.object({ userId: z.uuid() })), jwtMiddleware, async (c) => {
+app.get("/tenants/users/:userId", zValidator("param", z.object({ userId: z.uuid() })), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
   const { userId } = c.req.valid("param");
@@ -110,7 +110,7 @@ app.get("/users/:userId", zValidator("param", z.object({ userId: z.uuid() })), j
   }
 );
 
-app.post("/", zValidator("json", z.object({ name: z.string().min(1, { message: "Name is required" }) })), jwtMiddleware, async (c) => {
+app.post("/tenants", zValidator("json", z.object({ name: z.string().min(1, { message: "Name is required" }) })), jwtMiddleware, async (c) => {
 
   const payload = c.get("jwtPayload");
   const { name } = c.req.valid("json");
@@ -139,7 +139,7 @@ app.post("/", zValidator("json", z.object({ name: z.string().min(1, { message: "
   return c.json(tenant, 201);
 });
 
-app.post("/users", zValidator("json", postTenantsUsersSchema), jwtMiddleware, async (c) => {
+app.post("/tenants/users", zValidator("json", postTenantsUsersSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
   const { users } = c.req.valid("json");
 

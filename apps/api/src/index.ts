@@ -21,12 +21,12 @@ app.onError((err, c) => {
   return c.json({ error: "Internal Server Error" }, 500);
 });
 
-app.route("/tenants", tenantsApp);
-app.route("/auth", authsApp);
-app.route("/containers", containersApp);
-app.route("/items", itemsApp);
-app.route("/users", usersApp);
-app.route("/premises", premisesApp);
+app.route("/", tenantsApp);
+app.route("/", authsApp);
+app.route("/", containersApp);
+app.route("/", itemsApp);
+app.route("/", usersApp);
+app.route("/", premisesApp);
 
 
 export default app;
