@@ -42,26 +42,36 @@ app.get("/:id", zValidator("param", idParamSchema), jwtMiddleware, async (c) => 
   return c.json(item);
 })
 
-app.post("/", zValidator("json", postItemSchema), jwtMiddleware, async (c) => {
+app.post("/", jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");
-  const { imageBase64, ...rest } = c.req.valid("json");
 
+  const body = await c.req.parseBody();
+
+  const parsed = postItemSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: parsed.error.issues }, 400);
+  }
+
+  const photo = body["photo"];
   let embedding: number[] | null = null;
 
-  if (imageBase64) {
-    embedding = await getImageEmbedding(imageBase64);
+  if (photo instanceof File) {
+    const arrayBuffer = await photo.arrayBuffer();
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+    embedding = await getImageEmbedding(base64);
   }
+
   const [item] = await db
     .insert(items)
     .values({
-      ...rest,
+      ...parsed.data,
       embedding,
       tenantId: payload.tenantId,
     })
     .returning();
 
   return c.json(item, 201);
-})
+});
 
 app.get("/:id/where", zValidator("param", idParamSchema), jwtMiddleware, async (c) => {
   const payload = c.get("jwtPayload");

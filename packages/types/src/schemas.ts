@@ -23,7 +23,6 @@ export const postContainerSchema = z.object({
   location: z.string().optional(),
   className: z.string().optional(),
   isHidden: z.boolean().optional(),
-  imageBase64: z.string().optional(),
 });
 
 export const postItemSchema = z.object({
@@ -33,7 +32,6 @@ export const postItemSchema = z.object({
   className: z.string().optional(),
   isPinned: z.boolean().optional(),
   isHidden: z.boolean().optional(),
-  imageBase64: z.string().optional(),
 });
 
 export const postContainersItemsSchema = z.object({
