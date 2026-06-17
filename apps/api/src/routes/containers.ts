@@ -3,12 +3,12 @@ import { type AppVariables } from "../types.ts";
 import { jwtMiddleware } from "../middleware.ts";
 import { db, tenants } from "@item-locate/db";
 import { containers, items, itemsWhereAbouts  } from "@item-locate/db";
-import { eq, and, inArray, max } from "drizzle-orm";
+import { eq, and, inArray, max, cosineDistance, sql, desc } from "drizzle-orm";
 import { idParamSchema, postContainerSchema, postContainersItemsSchema } from "@item-locate/types";
 import { zValidator } from "@hono/zod-validator";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { getImageEmbedding } from "../embeddings.ts";
+import { getImageEmbedding, getImageDescription } from "../embeddings.ts";
 
 
 const app = new Hono<{ Variables: AppVariables }>();
@@ -141,5 +141,51 @@ app.post("/containers/:id/items/:itemId",
     return c.json(result, 201);
   }
 )
+
+app.post("/containers/match", jwtMiddleware, async (c) => {
+  const payload = c.get("jwtPayload");
+
+  const body = await c.req.parseBody();
+  const photo = body["photo"];
+  const itemName = body["itemName"] as string;
+
+  if (!(photo instanceof File)) {
+    return c.json({ error: "Photo is required" }, 400);
+  }
+
+  if (!itemName) {
+    return c.json({ error: "itemName is required" }, 400);
+  }
+
+  // Fotoğrafı base64'e çevir
+  const arrayBuffer = await photo.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+  // Önce embedding oluştur
+  const embedding = await getImageEmbedding(base64);
+
+  // Sonra container match'i bul
+  const similarity = sql<number>`1 - (${cosineDistance(containers.embedding, embedding)})`;
+  const [match] = await db
+    .select({ id: containers.id, name: containers.name, similarity })
+    .from(containers)
+    .where(eq(containers.tenantId, payload.tenantId))
+    .orderBy(desc(similarity))
+    .limit(1);
+
+  const container = match && match.similarity >= 0.7 ? match : null;
+
+  // En son description oluştur — container adını da gönder
+  const description = await getImageDescription(
+    base64,
+    itemName,
+    container?.name
+  );
+
+  return c.json({
+    description,
+    match: container
+  });
+});
 
 export default app;
