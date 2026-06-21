@@ -11,7 +11,9 @@ import {
   unique,
   point,
   vector,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 import { v7 as uuidv7 } from "uuid";
 
@@ -60,6 +62,12 @@ export const premises = pgTable("premises", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 })
 
+export const categories = pgTable("categories", {
+  id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
+  tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
+  names: jsonb("names").$type<Record<string, string>>().notNull(),
+});
+
 export const containers = pgTable("containers", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
@@ -67,7 +75,6 @@ export const containers = pgTable("containers", {
   embedding: vector("embedding", { dimensions: 768 }),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description"),
-  location: text("location"),
   className: varchar("class_name", { length: 50 }),
   isHidden: boolean("is_hidden").default(false).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -81,13 +88,11 @@ export const items = pgTable("items", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   tenantId: uuid("tenant_id").references(() => tenants.id, { onDelete: "cascade" }).notNull(),
   embedding: vector("embedding", { dimensions: 768 }),
-  category: varchar("category").default("Other").notNull(),
+  categoryId: uuid("category_id").references(() => categories.id, { onDelete: "set null" }),
   name: varchar("name", { length: 255 }).notNull(),
-  location: text("location"),
   className: varchar("class_name", { length: 50 }),
   isPinned: boolean("is_pinned").default(false).notNull(),
   isHidden: boolean("is_hidden").default(false).notNull(),
-  status: varchar("status", { length: 50 }).default("not_set").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at")
     .defaultNow()
@@ -95,15 +100,38 @@ export const items = pgTable("items", {
     .$onUpdate(() => new Date()),
 });
 
+export const whereaboutsKindEnum = pgEnum("whereabouts_kind", ["missing", "not_set", "stored"]);
 
 export const itemsWhereAbouts = pgTable("items_where_abouts", {
   id: uuid("id").primaryKey().$defaultFn(() => uuidv7()),
   itemId: uuid("item_id").references(() => items.id, { onDelete: "cascade" }).notNull(),
   containerId: uuid("container_id").references(() => containers.id, { onDelete: "set null" }),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  locationDescription: text("location_description"),
+  kind: whereaboutsKindEnum("kind").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-
-});
+}, (table) => [
+  check(
+    "whereabouts_not_both_set",
+    sql`NOT (${table.userId} IS NOT NULL AND ${table.containerId} IS NOT NULL)`,
+  ),
+  check(
+    "whereabouts_kind_matches_fields",
+    sql`(
+      (${table.kind} = 'stored' AND (
+        ${table.containerId} IS NOT NULL OR
+        ${table.userId} IS NOT NULL OR
+        ${table.locationDescription} IS NOT NULL
+      ))
+      OR
+      (${table.kind} IN ('missing', 'not_set') AND
+        ${table.containerId} IS NULL AND
+        ${table.userId} IS NULL AND
+        ${table.locationDescription} IS NULL
+      )
+    )`,
+  ),
+]);
 
 
 // --- AUTOMATION TABLES ---

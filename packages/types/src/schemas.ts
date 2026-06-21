@@ -1,5 +1,5 @@
-import { describe, z } from "zod";
-import { itemStatusEnum, roleEnum } from "@item-locate/types";
+import { itemStatusEnum, roleEnum, itemClassNameEnum, containerClassNameEnum } from "@item-locate/types";
+import { z } from "zod";
 
 export const loginSchema = z.object({
   email: z.email({ message: "Invalid email address" }),
@@ -19,24 +19,93 @@ export const idParamSchema = z.object({
 
 export const postContainerSchema = z.object({
   name: z.string().min(1, { message: "Name is required" }),
+  className: containerClassNameEnum.optional(),
   description: z.string().optional(),
-  location: z.string().optional(),
-  className: z.string().optional(),
-  isHidden: z.boolean().optional(),
+  embedding: z.array(z.number()).length(768).optional(),
+  premiseId: z.uuid().optional(),
 });
 
-export const postItemSchema = z.object({
-  name: z.string().min(1, { message: "Name is required" }),
-  category: z.string().optional(),
-  location: z.string().optional(),
-  className: z.string().optional(),
-  isPinned: z.boolean().optional(),
-  isHidden: z.boolean().optional(),
+export const patchContainerSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    isHidden: z.boolean().optional(),
+    className: containerClassNameEnum.optional(),
+    description: z.string().min(1).optional(),
+    premiseId: z.uuid().optional(),
+    embedding: z.array(z.number()).length(768).optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, {
+    message: "At least one field must be provided",
+  });
+
+export const postItemSchema = z
+  .object({
+    name: z.string().min(1, { message: "Name is required" }),
+    className: itemClassNameEnum.optional(),
+    categoryId: z.uuid().optional(),
+    locationDescription: z.string().min(1).optional(),
+    containerId: z.uuid().optional(),
+  });
+
+// schemas.ts
+export const patchItemSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    className: itemClassNameEnum.optional(),
+    isPinned: z.boolean().optional(),
+    isHidden: z.boolean().optional(),
+  })
+  .refine((d) => Object.keys(d).length > 0, {
+    message: "At least one field must be provided",
+  });
+
+export const moveItemSchema = z
+  .object({
+    containerId: z.uuid().optional(),
+    locationDescription: z.string().min(1).optional(),
+  })
+  .refine((d) => !!(d.containerId || d.locationDescription), {
+    message: "Either containerId or locationDescription must be provided",
+  });
+
+export const postItemCategorySchema = z.object({
+  names: z
+    .record(z.string(), z.string().min(1))
+    .refine((val) => "en" in val, {
+      message: "English translation is required",
+    }),
 });
 
-export const postContainersItemsSchema = z.object({
+
+export const analyzeLocationSchema = z.object({
+  itemName: z.string().min(1, "itemName is required"),
+  photo: z
+    .instanceof(File)
+    .refine((f) => f.size > 0, "Empty file")
+    .refine((f) => f.type === "image/jpeg", "Must be a JPEG"),
+});
+
+export const analyzeContainerSchema = z
+  .object({
+    name: z.string().min(1, { message: "Name is required" }),
+    lat: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce.number().min(-90).max(90).optional()
+    ),
+    lng: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce.number().min(-180).max(180).optional()
+    ),
+  })
+  .refine((d) => (d.lat === undefined) === (d.lng === undefined), {
+    message: "lat and lng must be provided together",
+    path: ["lat"],
+  });
+
+
+export const storeParamSchema = z.object({
   id: z.uuid(),
-  itemId: z.uuid(),
+  containerId: z.uuid(),
 });
 
 export const postTenantsUsersSchema = z.object({
@@ -63,3 +132,11 @@ export const pathAnalyzeSchema = z.object({
   closeUpPath: z.string(),
   widePath: z.string(),
 })
+
+export const whereaboutsActionSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("took_it") }),
+  z.object({ action: z.literal("left_it") }),
+  z.object({ action: z.literal("move_it"), containerId: z.uuid() }),
+  z.object({ action: z.literal("not_there") }),
+  z.object({ action: z.literal("mark_not_set") }),
+]);

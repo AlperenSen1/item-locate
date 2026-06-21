@@ -8,7 +8,7 @@ import itemsApp from "./routes/items.ts";
 import tenantsApp from "./routes/tenants.ts"; //default exported şeyi import edeceksen parantez kullanamazsın
 import usersApp from "./routes/users.ts";
 import premisesApp from "./routes/premises.ts";
-
+import analyzes from "./routes/analyzes.ts";
 
 const app = new Hono<{ Variables: AppVariables }>();
 
@@ -27,6 +27,6 @@ app.route("/", containersApp);
 app.route("/", itemsApp);
 app.route("/", usersApp);
 app.route("/", premisesApp);
-
+app.route("/", analyzes);
 
 export default app;
